@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bienvenida - Sistema Seguro</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="welcome-container">
+            <div class="welcome-content">
+                <h1>¡Bienvenido!</h1>
+                <p id="username-display" class="username-text"></p>
+                
+                <div class="success-icon">✓</div>
+                
+                <p class="success-message">
+                    Has iniciado sesión correctamente en el sistema de autenticación segura.
+                </p>
+                
+                <div class="info-box">
+                    <h3>Información de tu sesión:</h3>
+                    <ul>
+                        <li>Tu contraseña fue hasheada con SHA-256</li>
+                        <li>Se utilizó una sal única y aleatoria para tu seguridad</li>
+                        <li>La autenticación se realizó de forma segura</li>
+                    </ul>
+                </div>
+                
+                <!-- Panel de Administrador -->
+                <div id="admin-panel" class="admin-panel" style="display: none;">
+                    <h2>Panel de Administrador</h2>
+                    <p>Lista de todos los usuarios registrados en el sistema:</p>
+                    
+                    <div class="table-wrapper">
+                        <table class="users-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Usuario</th>
+                                    <th>Rol</th>
+                                    <th>Fecha de Registro</th>
+                                </tr>
+                            </thead>
+                            <tbody id="users-table-body">
+                                <tr>
+                                    <td colspan="4" class="loading">Cargando usuarios...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                

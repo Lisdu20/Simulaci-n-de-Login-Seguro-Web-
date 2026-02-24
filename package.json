@@ -1,0 +1,28 @@
+{
+  "name": "simulacion-login-seguro",
+  "version": "1.0.0",
+  "description": "Sistema de autenticación segura con hashing SHA-256 y salting aleatorio",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "autenticacion",
+    "hashing",
+    "sha256",
+    "salting",
+    "seguridad",
+    "nodejs",
+    "express"
+  ],
+  "author": "Desarrollo de Software Seguro",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2"
+  },
+  "devDependencies": {},
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
