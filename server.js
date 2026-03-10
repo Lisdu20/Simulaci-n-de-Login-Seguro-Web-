@@ -1,6 +1,7 @@
 /* ==========================================
    SERVIDOR - AUTENTICACIÓN SEGURA
    Implementa hashing con SHA-256 y salting
+   Integración con Google OAuth
    ========================================== */
 
 require('dotenv').config();
@@ -17,6 +18,62 @@ const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 // Middleware
 app.use(express.json());
 app.use(express.static(path.join(__dirname)));
+
+// Configurar sesiones
+app.use(session({
+    secret: process.env.SESSION_SECRET || 'tu_secret_session_muy_seguro',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 24 * 60 * 60 * 1000 // 24 horas
+    }
+}));
+
+// Inicializar Passport
+app.use(passport.initialize());
+app.use(passport.session());
+
+// ==========================================
+// CONFIGURACIÓN DE GOOGLE OAUTH - TOKEN ID FLOW
+// ==========================================
+
+// Estrategia de Google OAuth 2.0 con Token ID
+passport.use(new GoogleStrategy({
+    clientID: process.env.GOOGLE_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    callbackURL: process.env.GOOGLE_CALLBACK_URL
+}, (accessToken, refreshToken, profile, done) => {
+    // Este callback se ejecuta cuando el usuario se autentica con Google
+    // Ahora obtenemos el token ID del perfil
+    const googleId = profile.id;
+    const email = profile.emails[0].value;
+    const name = profile.displayName;
+    const tokenId = profile.id_token; // Token ID de Google
+
+    console.log(`[INFO] Autenticación Google Token ID: ${email}`);
+    console.log(`[INFO] Token ID recibido: ${tokenId ? 'Sí' : 'No'}`);
+
+    return done(null, {
+        id: googleId,
+        email: email,
+        name: name,
+        provider: 'google',
+        tokenId: tokenId, // Incluimos el token ID
+        avatar: profile.photos[0]?.value
+    });
+}));
+
+// Serializar usuario para sesión
+passport.serializeUser((user, done) => {
+    done(null, user);
+});
+
+// Deserializar usuario desde sesión
+passport.deserializeUser((user, done) => {
+    done(null, user);
+});
 
 // Base de datos en memoria (en producción usar una base de datos real)
 const users = {};
@@ -400,6 +457,104 @@ app.post('/auth/google', async (req, res) => {
 
 app.get('/bienvenida.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'bienvenida.html'));
+});
+
+// ==========================================
+// RUTAS DE GOOGLE OAUTH - TOKEN ID FLOW
+// ==========================================
+
+/**
+ * Iniciar autenticación con Google - Token ID Flow
+ * GET /auth/google
+ */
+app.get('/auth/google',
+    passport.authenticate('google', {
+        scope: ['openid', 'profile', 'email'], // Agregamos 'openid' para obtener token ID
+        response_type: 'code token id_token', // Solicitamos token ID en la respuesta
+        access_type: 'offline'
+    })
+);
+
+/**
+ * Callback de Google OAuth - Token ID Flow
+ * GET /auth/google/callback
+ */
+app.get('/auth/google/callback',
+    passport.authenticate('google', {
+        failureRedirect: '/index.html',
+        session: true
+    }),
+    (req, res) => {
+        // Autenticación exitosa con Token ID
+        console.log('[INFO] Usuario autenticado con Google Token ID:', req.user.email);
+        console.log('[INFO] Token ID almacenado:', req.user.tokenId ? 'Sí' : 'No');
+
+        // Guardar información de sesión incluyendo el token ID
+        req.session.user = req.user;
+
+        // Redirigir a la página de bienvenida
+        res.redirect('/bienvenida.html');
+    }
+);
+
+/**
+ * Ruta para obtener información del usuario autenticado
+ * GET /auth/user
+ */
+app.get('/auth/user', (req, res) => {
+    if (req.isAuthenticated()) {
+        return res.json({
+            success: true,
+            user: req.user,
+            tokenId: req.user.tokenId // Incluimos el token ID en la respuesta
+        });
+    } else {
+        return res.status(401).json({
+            success: false,
+            message: 'No autenticado'
+        });
+    }
+});
+
+/**
+ * Ruta para obtener solo el Token ID
+ * GET /auth/token
+ */
+app.get('/auth/token', (req, res) => {
+    if (req.isAuthenticated() && req.user.tokenId) {
+        return res.json({
+            success: true,
+            tokenId: req.user.tokenId,
+            user: {
+                id: req.user.id,
+                email: req.user.email,
+                name: req.user.name
+            }
+        });
+    } else {
+        return res.status(401).json({
+            success: false,
+            message: 'No autenticado o token ID no disponible'
+        });
+    }
+});
+
+/**
+ * Ruta para logout
+ * GET /logout
+ */
+app.get('/logout', (req, res) => {
+    req.logout((err) => {
+        if (err) {
+            console.error('[ERROR] Error en logout:', err);
+            return res.status(500).json({
+                success: false,
+                message: 'Error al cerrar sesión'
+            });
+        }
+        req.session.destroy();
+        res.redirect('/index.html');
+    });
 });
 
 /**
