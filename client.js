@@ -5,12 +5,19 @@
 // Detectar la página actual
 const currentPage = window.location.pathname.split('/').pop() || 'index.html';
 
+let googleClientId = '';
+let googleInitAttempts = 0;
+
 // Inicializar eventos al cargar la página
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     if (currentPage === 'index.html' || currentPage === '') {
+        await loadGoogleClientId();
         initLoginForm();
+        initGoogleSignIn();
     } else if (currentPage === 'registro.html') {
+        await loadGoogleClientId();
         initRegistroForm();
+        initGoogleSignIn();
     } else if (currentPage === 'bienvenida.html') {
         initWelcomePage();
     }
@@ -71,7 +78,7 @@ async function handleLoginSubmit(e) {
         const data = await response.json();
         
         if (response.ok && data.success) {
-            showMessage(messageDiv, 'Autenticación exitosa. Redirigiendo...', 'success');
+            showMessage(messageDiv, 'Autenticacion exitosa. Redirigiendo...', 'success');
             // Guardar información en sessionStorage (no en localStorage por seguridad)
             sessionStorage.setItem('username', sanitizedUsername);
             sessionStorage.setItem('role', data.role || 'user');
@@ -88,6 +95,158 @@ async function handleLoginSubmit(e) {
         console.error('Error en login:', error);
         showMessage(messageDiv, 'Error al procesar la solicitud. Intenta más tarde.', 'error');
     }
+}
+
+/* ==========================================
+   LOGIN CON GOOGLE
+   ========================================== */
+
+async function loadGoogleClientId() {
+    if (googleClientId) return googleClientId;
+
+    try {
+        const res = await fetch('/config/google');
+        const data = await res.json();
+
+        if (res.ok && data.clientId) {
+            googleClientId = data.clientId;
+            return googleClientId;
+        }
+
+        console.error('No se pudo obtener GOOGLE_CLIENT_ID:', data.message);
+    } catch (error) {
+        console.error('Error cargando GOOGLE_CLIENT_ID:', error);
+    }
+
+    return null;
+}
+
+async function initGoogleSignIn() {
+    const container = document.getElementById('google-button-container');
+    if (!container) return;
+
+    // Mostrar placeholder mientras carga GIS
+    if (!container.dataset.initialized) {
+        container.dataset.initialized = 'true';
+        container.innerHTML = '<span style="color:#6b7280;font-weight:600;">Cargando botón de Google…</span>';
+    }
+
+    if (!googleClientId) {
+        await loadGoogleClientId();
+    }
+
+    if (!googleClientId) {
+        container.innerHTML = '<span style="color:#b91c1c;font-weight:600;">Configura GOOGLE_CLIENT_ID en el servidor.</span>';
+        return;
+    }
+
+    const gisLoaded = typeof window.google !== 'undefined' &&
+        window.google.accounts &&
+        window.google.accounts.id;
+
+    if (!gisLoaded) {
+        if (googleInitAttempts < 10) {
+            googleInitAttempts += 1;
+            setTimeout(initGoogleSignIn, 300);
+        } else {
+            console.warn('Google Identity Services no está disponible en este navegador.');
+            container.innerHTML = '';
+            const retryBtn = document.createElement('button');
+            retryBtn.textContent = 'Reintentar con Google';
+            retryBtn.className = 'btn-submit';
+            retryBtn.type = 'button';
+            retryBtn.onclick = () => {
+                googleInitAttempts = 0;
+                initGoogleSignIn();
+            };
+            container.appendChild(retryBtn);
+        }
+        return;
+    }
+
+    window.google.accounts.id.initialize({
+        client_id: googleClientId,
+        callback: handleGoogleCredentialResponse,
+        ux_mode: 'popup'
+    });
+
+    container.innerHTML = '';
+    window.google.accounts.id.renderButton(container, {
+        theme: 'outline',
+        size: 'large',
+        text: 'continue_with',
+        shape: 'pill',
+        width: '100%'
+    });
+
+    window.google.accounts.id.prompt();
+}
+
+async function handleGoogleCredentialResponse(response) {
+    const messageDiv = document.getElementById('message');
+
+    if (!response || !response.credential) {
+        showMessage(messageDiv, 'No se recibi?? el token de Google', 'error');
+        return;
+    }
+
+    // Guardar respuesta completa del proveedor en localStorage (advertencia: contiene el JWT)
+    try {
+        localStorage.setItem('google_credential_response', JSON.stringify(response));
+    } catch (e) {
+        console.warn('No se pudo almacenar la respuesta de Google en localStorage:', e);
+    }
+
+    // Decodificar el JWT para ver los datos de usuario y guardarlos también
+    try {
+        const payload = decodeGoogleCredential(response.credential);
+        localStorage.setItem('google_credential_payload', JSON.stringify(payload));
+        console.info('Google payload decodificado:', payload);
+    } catch (e) {
+        console.warn('No se pudo decodificar el credential de Google:', e);
+    }
+
+    try {
+        showMessage(messageDiv, 'Validando cuenta de Google...', 'info');
+
+        const res = await fetch('/auth/google', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ credential: response.credential })
+        });
+
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+            const displayName = data.username || data.email || 'Usuario';
+            sessionStorage.setItem('username', displayName);
+            sessionStorage.setItem('role', data.role || 'user');
+            if (data.email) {
+                sessionStorage.setItem('email', data.email);
+            }
+            showMessage(messageDiv, 'Autenticación con Google exitosa. Redirigiendo...', 'success');
+            setTimeout(() => window.location.href = '/bienvenida.html', 800);
+        } else {
+            showMessage(messageDiv, data.message || 'No se pudo iniciar sesión con Google', 'error');
+        }
+    } catch (error) {
+        console.error('Error en login con Google:', error);
+        showMessage(messageDiv, 'Error al validar tu cuenta de Google', 'error');
+    }
+}
+
+/**
+ * Decodifica el JWT de Google Identity (credential) sin verificar firma.
+ * Solo para propósitos de inspección en cliente.
+ */
+function decodeGoogleCredential(token) {
+    const parts = token.split('.');
+    if (parts.length !== 3) {
+        throw new Error('Token JWT malformado');
+    }
+    const payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const decoded = atob(payload);
+    return JSON.parse(decoded);
 }
 
 /* ==========================================

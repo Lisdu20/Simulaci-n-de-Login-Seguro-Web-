@@ -168,6 +168,31 @@ body:has(.admin-panel) .container {
     transform: translateY(0);
 }
 
+.divider {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 16px 0;
+    color: #6b7280;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.divider::before,
+.divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(0,0,0,0.05), rgba(0,0,0,0.2));
+}
+
+.google-btn-wrapper {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 12px;
+    min-height: 46px;
+}
+
 .btn-submit:disabled {
     background: #ccc;
     cursor: not-allowed;
