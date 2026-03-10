@@ -3,12 +3,16 @@
    Implementa hashing con SHA-256 y salting
    ========================================== */
 
+require('dotenv').config();
 const express = require('express');
 const crypto = require('crypto');
 const path = require('path');
+const { OAuth2Client } = require('google-auth-library');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
+const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
 // Middleware
 app.use(express.json());
@@ -302,8 +306,98 @@ app.post('/login', (req, res) => {
 });
 
 /**
- * Ruta para obtener la página de bienvenida
+ * ConfiguraciÃ³n pÃºblica para frontend
+ * GET /config/google
  */
+app.get('/config/google', (req, res) => {
+    if (!GOOGLE_CLIENT_ID) {
+        return res.status(500).json({
+            success: false,
+            message: 'GOOGLE_CLIENT_ID no configurado en el servidor'
+        });
+    }
+
+    return res.status(200).json({
+        success: true,
+        clientId: GOOGLE_CLIENT_ID
+    });
+});
+
+/**
+ * Ruta de Login con Google
+ * POST /auth/google
+ */
+app.post('/auth/google', async (req, res) => {
+    try {
+        const { credential } = req.body;
+
+        if (!GOOGLE_CLIENT_ID) {
+            return res.status(500).json({
+                success: false,
+                message: 'GOOGLE_CLIENT_ID no configurado en el servidor'
+            });
+        }
+
+        if (!credential) {
+            return res.status(400).json({
+                success: false,
+                message: 'Token de Google requerido'
+            });
+        }
+
+        const ticket = await googleClient.verifyIdToken({
+            idToken: credential,
+            audience: GOOGLE_CLIENT_ID
+        });
+
+        const payload = ticket.getPayload();
+
+        if (!payload || !payload.sub) {
+            return res.status(401).json({
+                success: false,
+                message: 'Token de Google inv?lido'
+            });
+        }
+
+        const googleId = payload.sub;
+        const email = payload.email || `usuario_google_${googleId}@example.com`;
+        const displayName = payload.name || email;
+        const username = `google_${googleId}`;
+
+        if (!users[username]) {
+            users[username] = {
+                salt: null,
+                hash: null,
+                role: 'user',
+                createdAt: new Date().toISOString(),
+                provider: 'google',
+                email,
+                displayName
+            };
+        }
+
+        console.log(`[INFO] Login con Google exitoso: ${email}`);
+
+        return res.status(200).json({
+            success: true,
+            message: 'Autenticaci?n con Google exitosa',
+            username: displayName,
+            email,
+            role: users[username].role
+        });
+    } catch (error) {
+        console.error('[ERROR] Error en /auth/google:', error);
+        return res.status(401).json({
+            success: false,
+            message: 'Token de Google inv?lido o expirado'
+        });
+    }
+});
+
+/**
+ * Ruta para obtener la p?gina de bienvenida
+ */
+
 app.get('/bienvenida.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'bienvenida.html'));
 });
