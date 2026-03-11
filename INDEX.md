@@ -41,6 +41,12 @@ Bienvenido al Sistema de Autenticación Segura. Esta documentación te guiará a
    - Pruebas de seguridad específicas
    - Criterios de éxito
 
+6. **[MATRIZ_ROLES.md](MATRIZ_ROLES.md)** - Matriz de roles y permisos
+   - Definición de roles del sistema
+   - Permisos por rol
+   - Acceso a páginas y funcionalidades
+   - Validaciones de transición entre roles
+
 ## 🗂️ Estructura de Archivos
 
 ```
@@ -53,6 +59,7 @@ SimulacionLoginSeguroWeb/
 │   ├── SECURITY.md        ← Seguridad detallada
 │   ├── STRUCTURE.md       ← Estructura del código
 │   ├── TEST_CASES.md      ← Casos de prueba
+│   ├── MATRIZ_ROLES.md    ← Matriz de roles
 │   └── INDEX.md           ← Este archivo
 │
 ├── 🚀 CONFIGURACIÓN
@@ -98,7 +105,8 @@ SimulacionLoginSeguroWeb/
 1. QUICKSTART.md - Setup rápido
 2. GUIDE.md - Pruebas manuales
 3. TEST_CASES.md - Casos predefinidos
-4. test.js - Ejecutar pruebas unitarias
+4. MATRIZ_ROLES.md - Permisos y roles
+5. test.js - Ejecutar pruebas unitarias
 
 ### 🎓 Estudiante
 1. README.md - Contexto
@@ -119,6 +127,9 @@ SimulacionLoginSeguroWeb/
 
 ### ¿Cuáles son los requisitos del sistema?
 → [GUIDE.md - Requisitos Previos](GUIDE.md#-requisitos-previos)
+
+### ¿Cómo funcionan los roles y permisos?
+→ [MATRIZ_ROLES.md - Roles del Sistema](MATRIZ_ROLES.md#roles-del-sistema)
 
 ### ¿Cómo instalar y ejecutar?
 → [GUIDE.md - Instalación](GUIDE.md#-instalación-del-proyecto)
@@ -141,6 +152,7 @@ SimulacionLoginSeguroWeb/
 | Prevención SQL | server.js | ✅ |
 | Prevención XSS | client.js | ✅ |
 | Mensajes genéricos | server.js | ✅ |
+| Control de roles | client.js + MATRIZ_ROLES.md | ✅ |
 | Pruebas | test.js | ✅ |
 
 ## 🆘 Necesitas Ayuda?
@@ -174,6 +186,7 @@ Documentación Técnica
 ☐ SECURITY.md
 ☐ STRUCTURE.md
 ☐ TEST_CASES.md
+☐ MATRIZ_ROLES.md
 
 Código Fuente
 ☐ server.js
@@ -212,8 +225,9 @@ Después de leer la documentación, deberías entender:
 | Versión | Fecha | Cambios |
 |---------|-------|---------|
 | 1.0 | Feb 12, 2026 | Versión inicial completa |
+| 1.1 | Mar 10, 2026 | Agregada matriz de roles y permisos |
 
 ---
 
-**Último actualizado**: Febrero 12, 2026  
-**Versión de Documentación**: 1.0
+**Último actualizado**: Marzo 10, 2026  
+**Versión de Documentación**: 1.1
