@@ -227,15 +227,47 @@ function initWelcomePage() {
     const usernameDisplay = document.getElementById('username-display');
     const adminPanel = document.getElementById('admin-panel');
     
-    if (!username) {
-        window.location.href = '/index.html';
-    } else if (usernameDisplay) {
-        usernameDisplay.textContent = `¡Hola, ${sanitizeOutput(username)}!`;
+    // Si hay username en sessionStorage, usar ese (usuario tradicional)
+    if (username) {
+        if (usernameDisplay) {
+            usernameDisplay.textContent = `¡Hola, ${sanitizeOutput(username)}!`;
+        }
+        
+        // Si es administrador, cargar y mostrar la lista de usuarios
+        if (role === 'admin' && adminPanel) {
+            loadUsersList(username);
+        }
+    } else {
+        // Intentar cargar usuario de Google OAuth desde servidor
+        loadGoogleAuthUser();
     }
-    
-    // Si es administrador, cargar y mostrar la lista de usuarios
-    if (role === 'admin' && adminPanel) {
-        loadUsersList(username);
+}
+
+/**
+ * Carga la información del usuario autenticado con Google
+ */
+async function loadGoogleAuthUser() {
+    try {
+        const response = await fetch('/auth/user');
+        const data = await response.json();
+        
+        if (response.ok && data.success && data.user) {
+            const user = data.user;
+            const usernameDisplay = document.getElementById('username-display');
+            
+            if (usernameDisplay) {
+                usernameDisplay.textContent = `¡Hola, ${sanitizeOutput(user.name)}!`;
+            }
+            
+            // Guardar información de Google user en sessionStorage
+            sessionStorage.setItem('googleUser', JSON.stringify(user));
+        } else {
+            // No hay usuario autenticado, redirigir a login
+            window.location.href = '/index.html';
+        }
+    } catch (error) {
+        console.error('Error al cargar usuario de Google:', error);
+        window.location.href = '/index.html';
     }
 }
 
@@ -303,7 +335,10 @@ function displayUsersList(users) {
 function logout() {
     sessionStorage.removeItem('username');
     sessionStorage.removeItem('role');
-    window.location.href = '/index.html';
+    sessionStorage.removeItem('googleUser');
+    
+    // Redirigir a logout del servidor (que maneja Passport logout)
+    window.location.href = '/logout';
 }
 
 /* ==========================================
